@@ -152,8 +152,7 @@ Tips:
 	}
 	contrast->InsertComponent(0,0,1);
 	contrast->InsertComponent(1,0,0);
-	contrast->InsertComponent(2,0,0);
-	contrast->InsertComponent(3,0,0);
+
 
 /***************************************
 Description:
@@ -174,7 +173,7 @@ Tips:
 *****************************************/
 	/*get input images for test*/
 	char **filename;//filename for reader
-	char* prefix="dicom1/IMG-0001-000";//filename prefix
+	char* prefix="dicom1/IMG-0002-000";//filename prefix
 	//generate filename series
 	filename=FilenameGenerator(1,numVolume,prefix );
 
