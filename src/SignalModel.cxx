@@ -409,7 +409,7 @@ vtkFloatArray* SignalModeling::GaussianDownsampleList(vtkFloatArray* inputList)
     //#--- *notice we are expecting inc to be an integer!
     //#--- so we never land between pixels when downsampling.
 
-	int half = floor(numsamps/2);
+	int half = (int) (numsamps/2);//int half = floor(numsamps/2);
 	
 	int olen=inputList->GetNumberOfTuples();////signal length : numTimePoint*TR/Time_Increment
 	int nlen=this->numTimePoints;//event length : number of timepoint
