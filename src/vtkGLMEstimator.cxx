@@ -271,8 +271,9 @@ void vtkGLMEstimator::ComputeMeans(vtkInformationVector **inputVector)
 
         // get new mean for each volume
         double total = 0.0;
-        short *ptr = (short *) Getinputx(i,inputVector)->GetScalarPointer();
-        int count2 = 0;
+        //short *ptr = (short *) Getinputx(i,inputVector)->GetScalarPointer();
+        short *ptr = (short *) this->GetInput(i)->GetScalarPointer();
+		int count2 = 0;
         for (int ii = 0; ii < dim; ii++)
         {
             if (ptr[ii] >= this->GlobalMeans[i])

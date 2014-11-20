@@ -32,6 +32,8 @@
 #include <vtkMetaImageWriter.h>
 #include <vtkXMLImageDataReader.h>
 #include <vtkXMLImageDataWriter.h>
+#include <vtkDICOMImageReader.h>
+
 
 //headfiles for write designmatrix as test
 #include <fstream>
@@ -50,6 +52,7 @@ char** FilenameGenerator(int first,int last,char* prefix);
 //void fileout(vtkFloatArray* input,char* name);
 vtkImageData * ReadmhaFile(char* filename);
 vtkImageData * ReadvtiFile(char* filename);
+vtkImageData * ReaddcmFile(char* filename);
 void WritemhaFile(vtkImageData* ImageToWrite,char* filename);
 void WritevtiFile(vtkImageData* ImageToWrite,char* filename);
 
@@ -87,26 +90,26 @@ Tips:
 	contrast used in next section
 *****************************************/
 	//paradigm parameters
-	int numVolume=90;
-	float TR=2.0;
+	int numVolume=60;
+	float TR=1.5;
 	vtkFloatArray* onset=vtkFloatArray::New();
 	vtkFloatArray* duration=vtkFloatArray::New();
 	vtkIntArray* contrast=vtkIntArray::New();
 
-	onset->SetNumberOfComponents(2);
-	duration->SetNumberOfComponents(2);
-	onset->InsertComponent(0,0,10);
-	onset->InsertComponent(1,0,40);
-	onset->InsertComponent(2,0,70);
-	onset->InsertComponent(0,1,20);
-	onset->InsertComponent(1,1,50);
-	onset->InsertComponent(2,1,80);
-	duration->InsertComponent(0,0,10);
-	duration->InsertComponent(1,0,10);
-	duration->InsertComponent(2,0,10);
-	duration->InsertComponent(0,1,10);
-	duration->InsertComponent(1,1,10);
-	duration->InsertComponent(2,1,10);
+	onset->SetNumberOfComponents(1);
+	duration->SetNumberOfComponents(1);
+	onset->InsertComponent(0,0,0);
+	//onset->InsertComponent(1,0,40);
+	//onset->InsertComponent(2,0,70);
+	onset->InsertComponent(0,1,30);
+	//onset->InsertComponent(1,1,50);
+	//onset->InsertComponent(2,1,80);
+	duration->InsertComponent(0,0,15);
+	//duration->InsertComponent(1,0,10);
+	//duration->InsertComponent(2,0,10);
+	duration->InsertComponent(0,1,15);
+	//duration->InsertComponent(1,1,10);
+	//duration->InsertComponent(2,1,10);
 
 	//parameter set up
 	SignalModeling* siglm=new SignalModeling;
@@ -148,7 +151,7 @@ Tips:
 		contrast->InsertComponent(i,0,0);
 	}
 	contrast->InsertComponent(0,0,1);
-	contrast->InsertComponent(1,0,-1);
+	contrast->InsertComponent(1,0,0);
 	contrast->InsertComponent(2,0,0);
 	contrast->InsertComponent(3,0,0);
 
@@ -171,7 +174,7 @@ Tips:
 *****************************************/
 	/*get input images for test*/
 	char **filename;//filename for reader
-	char* prefix="mha/functional";//filename prefix
+	char* prefix="dicom1/IMG-0001-000";//filename prefix
 	//generate filename series
 	filename=FilenameGenerator(1,numVolume,prefix );
 
@@ -198,7 +201,7 @@ Tips:
 	int i;
 	for(i=0;i<numVolume;i++)
 	{
-		GLMEstimator->AddInput(ReadmhaFile(filename[i]));
+		GLMEstimator->AddInput(ReaddcmFile(filename[i]));
 	}
 
 	//Description:
@@ -318,7 +321,14 @@ vtkImageData * ReadvtiFile(char* filename)
 	std::cout<<"reader "<<filename<<" successfully"<<std::endl;
 	return reader->GetOutput();
 }
-
+vtkImageData * ReaddcmFile(char* filename)
+{
+	vtkDICOMImageReader *reader=vtkDICOMImageReader::New();
+	reader->SetFileName(filename);
+	reader->Update();
+	std::cout<<"reader "<<filename<<" successfully"<<std::endl;
+	return reader->GetOutput();
+}
 
 void WritemhaFile(vtkImageData* ImageToWrite,char* filename)
 {
@@ -336,6 +346,7 @@ void WritevtiFile(vtkImageData* ImageToWrite,char* filename)
 	  writer2->Write();
 	std::cout<<"write "<<filename<<" successfully"<<std::endl;
 }
+
 
 
 vtkFloatArray* SetdesignMat()
@@ -512,7 +523,7 @@ vtkImageData* ActivationThreshold(vtkImageData * image)
 char** FilenameGenerator(int first,int last,char* prefix )
 {
 	char** returnName;
-	char* suffix="%02d.mha";
+	char* suffix="%02d.dcm";
 	char* name2=new char[strlen(suffix)+strlen(prefix)];
 	strcpy(name2,prefix);
 	strcat(name2,suffix);
