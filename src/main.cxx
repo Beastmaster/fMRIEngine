@@ -87,31 +87,31 @@ Tips:
 	contrast used in next section
 *****************************************/
 	//paradigm parameters
-	int numVolume=90;
-	float TR=2.0;
+	int numVolume=60;
+	float TR=1.5;
 	vtkFloatArray* onset=vtkFloatArray::New();
 	vtkFloatArray* duration=vtkFloatArray::New();
 	vtkIntArray* contrast=vtkIntArray::New();
 
-	onset->SetNumberOfComponents(2);
-	duration->SetNumberOfComponents(2);
-	onset->InsertComponent(0,0,10);
-	onset->InsertComponent(1,0,40);
-	onset->InsertComponent(2,0,70);
-	onset->InsertComponent(0,1,20);
-	onset->InsertComponent(1,1,50);
-	onset->InsertComponent(2,1,80);
-	duration->InsertComponent(0,0,10);
-	duration->InsertComponent(1,0,10);
-	duration->InsertComponent(2,0,10);
-	duration->InsertComponent(0,1,10);
-	duration->InsertComponent(1,1,10);
-	duration->InsertComponent(2,1,10);
+	onset->SetNumberOfComponents(1);
+	duration->SetNumberOfComponents(1);
+	onset->InsertComponent(0,0,0);
+	//onset->InsertComponent(1,0,40);
+	//onset->InsertComponent(2,0,70);
+	onset->InsertComponent(0,1,30);
+	//onset->InsertComponent(1,1,50);
+	//onset->InsertComponent(2,1,80);
+	duration->InsertComponent(0,0,15);
+	//duration->InsertComponent(1,0,10);
+	//duration->InsertComponent(2,0,10);
+	duration->InsertComponent(0,1,15);
+	//duration->InsertComponent(1,1,10);
+	//duration->InsertComponent(2,1,10);
 
 	//parameter set up
 	SignalModeling* siglm=new SignalModeling;
 	siglm->SetLen(numVolume);
-	siglm->SetTR(2);
+	siglm->SetTR(TR);
 	siglm->SetOnset(onset);
 	siglm->SetDuration(duration);
 

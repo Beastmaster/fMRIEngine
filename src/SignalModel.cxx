@@ -298,7 +298,7 @@ vtkFloatArray* SignalModeling::BuildDiscreteCosineBasis()
 
 			if ( t == 0.0 )
 			{
-				v = v / sqrt (2.0);
+			//	v = v / sqrt (2.0);
 			}
 			cosine->InsertComponent(y,k-1,v);
 			t = t + inc ;
