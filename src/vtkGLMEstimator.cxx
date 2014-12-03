@@ -104,23 +104,24 @@ vtkFloatArray *vtkGLMEstimator::GetRegionTimeCourse(vtkInformationVector **input
     this->RegionTimeCourse->SetNumberOfTuples(numberOfInputs);
     this->RegionTimeCourse->SetNumberOfComponents(1);
 
-    short *val;
+    //short *val; ---qinshuo 2014.12.2
+	float *val;
     int size = this->RegionVoxels->GetNumberOfTuples();
 
     for (int ii = 0; ii < numberOfInputs; ii++)
     {
-        int total = 0;
+        float total = 0;
         for (int jj = 0; jj < size; jj++)
         {
             short x = (short)this->RegionVoxels->GetComponent(jj, 0);
             short y = (short)this->RegionVoxels->GetComponent(jj, 1);
             short z = (short)this->RegionVoxels->GetComponent(jj, 2);
 
-            val = (short *)Getinputx(ii,inputVector)->GetScalarPointer(x, y, z); 
+            val = (float *)Getinputx(ii,inputVector)->GetScalarPointer(x, y, z); 
             total += *val;
         }
 
-        this->RegionTimeCourse->SetComponent(ii, 0, (short)(total/size)); 
+        this->RegionTimeCourse->SetComponent(ii, 0, (float)(total/size)); 
     }
 
     return this->RegionTimeCourse;
@@ -150,10 +151,12 @@ vtkFloatArray *vtkGLMEstimator::GetTimeCourse(int i, int j, int k,vtkInformation
     this->TimeCourse->SetNumberOfTuples(numberOfInputs);
     this->TimeCourse->SetNumberOfComponents(1);
 
-    short *val;
+    //short----by qinshuo 2014.12.2
+	float *val;
     for (int ii = 0; ii < numberOfInputs; ii++)
     {
-        val = (short *)Getinputx(ii,inputVector)->GetScalarPointer(i, j, k); 
+		//short----by qinshuo 2014.12.2
+        val = (float *)Getinputx(ii,inputVector)->GetScalarPointer(i, j, k); 
         this->TimeCourse->SetComponent(ii, 0, *val); 
     }
 
@@ -271,8 +274,9 @@ void vtkGLMEstimator::ComputeMeans(vtkInformationVector **inputVector)
 
         // get new mean for each volume
         double total = 0.0;
-        //short *ptr = (short *) Getinputx(i,inputVector)->GetScalarPointer();
-        short *ptr = (short *) this->GetInput(i)->GetScalarPointer();
+        //short---by qinshuo 2014.12.2
+		float *ptr = (float *) Getinputx(i,inputVector)->GetScalarPointer();
+//        short *ptr = (short *) this->GetInput(i)->GetScalarPointer();
 		int count2 = 0;
         for (int ii = 0; ii < dim; ii++)
         {
@@ -581,9 +585,11 @@ int vtkGLMEstimator::RequestData(vtkInformation *vtkNotUsed(request),
                 float scaledTotal = 0.0;
                 for (int i = 0; i < numberOfInputs; i++)
                 {
-                    short *value 
+                    //short ---- by qinshuo 2014.12.2
+					float *value 
                        // = (short *)this->GetInput(i)->GetScalarPointer(ii, jj, kk);
-						=(short *)Getinputx(i,inputVector)->GetScalarPointer(ii,jj,kk);
+					   //short ---- by qinshuo 2014.12.2
+						=(float *)Getinputx(i,inputVector)->GetScalarPointer(ii,jj,kk);
                     // time course is scaled by user option
                     float scale = 1.0;
                     if (this->GlobalEffect == 1)
