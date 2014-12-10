@@ -33,13 +33,29 @@
 #include <vtkXMLImageDataReader.h>
 #include <vtkXMLImageDataWriter.h>
 #include <vtkDICOMImageReader.h>
-
+#include <vtkBMPWriter.h>
+//Descirption:headfile used by ReadFile()
+//Info : by qinshuo
+#include <vtkImageCast.h>
 
 //headfiles for write designmatrix as test
 #include <fstream>
 
 //headfiles for filename generator
 #include "itkNumericSeriesFileNames.h"
+
+//thresholding
+#include "vtkImageThreshold.h"
+//gaussian smoothing
+#include "vtkImageGaussianSmooth.h"
+
+//Description:thresholding
+//Info:by qinshuo --- 2014.12.9
+vtkImageData* Pre_Threshold(vtkImageData*,float lower,float upper);
+
+//Description:gaussian smoothing
+//Info:by qinshuo --- 2014.12.9
+vtkImageData* Smooth(vtkImageData*);
 
 
 //Description:generate filenames
@@ -55,7 +71,7 @@ vtkImageData * ReadvtiFile(char* filename);
 vtkImageData * ReaddcmFile(char* filename);
 void WritemhaFile(vtkImageData* ImageToWrite,char* filename);
 void WritevtiFile(vtkImageData* ImageToWrite,char* filename);
-
+void WritebmpFile(vtkImageData* ImageToWrite,char* filename);
 //Description: Set initial designMat
 //Info: by qinshuo 9.5
 vtkFloatArray * SetdesignMat();
@@ -69,6 +85,13 @@ void write_txt(vtkImageData*,char*);
 
 int main (int argc,char ** argv)
 {
+	/****filenames input***/
+	char **filename;//filename for reader
+	//char* prefix="dicom1/IMG-0002-";//filename prefix
+	char* prefix="lft-mha/20130610_144057LTHANDMOTORs701a1007_";
+	int start = 1;
+	//char* thresholded_name = "threshold_byme.bmp";
+	char* thresholded_name = "threshold_byme.mha";
 /***************************************
 Description:
 	Model a signal and generate DesignMatrix
@@ -91,26 +114,29 @@ Tips:
 *****************************************/
 	//paradigm parameters
 	int numVolume=60;
-	float TR=1.5;
+	float TR=3;
 	vtkFloatArray* onset=vtkFloatArray::New();
 	vtkFloatArray* duration=vtkFloatArray::New();
 	vtkIntArray* contrast=vtkIntArray::New();
 
 	onset->SetNumberOfComponents(1);
 	duration->SetNumberOfComponents(1);
-	onset->InsertComponent(0,0,0);
+	onset->InsertComponent(0,0,10);
 	//onset->InsertComponent(1,0,40);
 	//onset->InsertComponent(2,0,70);
-	onset->InsertComponent(0,1,30);
-	//onset->InsertComponent(1,1,50);
+	onset->InsertComponent(1,0,30);
+	onset->InsertComponent(2,0,50);
 	//onset->InsertComponent(2,1,80);
-	duration->InsertComponent(0,0,15);
+	duration->InsertComponent(0,0,10);
 	//duration->InsertComponent(1,0,10);
 	//duration->InsertComponent(2,0,10);
-	duration->InsertComponent(0,1,15);
+	duration->InsertComponent(1,0,10);
+	duration->InsertComponent(2,0,10);
 	//duration->InsertComponent(1,1,10);
 	//duration->InsertComponent(2,1,10);
 
+	int xx_t = onset->GetNumberOfTuples();
+	int xx_c = onset->GetNumberOfComponents();
 	//parameter set up
 	SignalModeling* siglm=new SignalModeling;
 	siglm->SetLen(numVolume);
@@ -171,11 +197,7 @@ Function:
 Tips:
 	number of fMRImages= numVolume
 *****************************************/
-	/*get input images for test*/
-	char **filename;//filename for reader
-	char* prefix="dicom1/IMG-0002-000";//filename prefix
-	//generate filename series
-	filename=FilenameGenerator(1,numVolume,prefix );
+
 
 	//class:vtkGLMDector
 	//superclass: vtkActivationDector
@@ -189,18 +211,26 @@ Tips:
 	//class:vtkGLMEstimator
 	///superclass:vtkActivationEstimator
 	////superclass:vtkMultipleInputImageFilter
-	//Description: the estimation must occur becore any activation volumes can be generated
+	//Description: the estimation must occur before any activation volumes can be generated
 	vtkGLMEstimator* GLMEstimator=vtkGLMEstimator::New();
 	//set detector first
 	GLMEstimator->SetDetector(GLMDetector);
 	
-	
+		//write_txt(ReadvtiFile("xxx.vti"),"xxx.txt");
+		//write_txt(ReadvtiFile("estimated.vti"),"estimated.txt");
+	/*get input images for test*/
+	//char **filename;//filename for reader
+	//char* prefix="dicom1/IMG-0002-000";//filename prefix
+	//int start = 1;
+	//generate filename series
+	filename=FilenameGenerator(start,start+numVolume-1,prefix );	
 	//add input to GLMEstimator
 	/*ReadmhaFile(filename[i])for test*/
 	int i;
 	for(i=0;i<numVolume;i++)
 	{
-		GLMEstimator->AddInput(ReaddcmFile(filename[i]));
+		GLMEstimator->AddInput(Pre_Threshold(Smooth(ReadmhaFile(filename[i])),150,1000));
+		//GLMEstimator->AddInput(Pre_Threshold(ReadmhaFile(filename[i]),150,1000));
 	}
 
 	//Description:
@@ -223,7 +253,8 @@ Tips:
 	//return pointer
 	vtkImageData *estimatedImage=vtkImageData::New();
 	estimatedImage=GLMEstimator->GetOutput();
-
+	WritevtiFile(estimatedImage,"estimated.vti");
+	write_txt(estimatedImage,"estimatedx.txt");
 	int imageDim[3];
 	estimatedImage->GetDimensions(imageDim);
 	std::cout<<"estimatedImage"<<std::endl;
@@ -254,10 +285,12 @@ Tips:
     // Sets the design matrix 
     GLMVolmeGenerator->SetDesignMatrix(designMat);
 	//input estimatedimage
+	vtkImageData* estimatedImage1 = vtkImageData::New();
+	estimatedImage1 = ReadvtiFile("xxx.vti");
+	/////////////
 	GLMVolmeGenerator->SetInput(estimatedImage);
 	GLMVolmeGenerator->Update();
 	vtkImageData *GeneratedImage=GLMVolmeGenerator->GetOutput();
-	
 /***************************************
 Description:
 	thresholding. final output of the function
@@ -278,7 +311,7 @@ Tips:
 	//output:t
 	double t;
 	double p=0.001;
-	long dof=29;//default=numVolume-1
+	long dof=59;//default=numVolume-1
 
 	vtkCDF * CDF=vtkCDF::New();  
 	t=CDF->p2t(p,dof);
@@ -294,7 +327,13 @@ Tips:
 	//output image
 	vtkImageData* thresholded= IsingActivationThreshold->GetOutput();
 	//write an output for test
-	WritemhaFile(thresholded,"threshold_byme.mha");
+	vtkImageCast* castFilter = vtkImageCast::New();
+	castFilter->SetInput(thresholded);
+	castFilter->SetOutputScalarTypeToUnsignedChar();
+	castFilter->Update();
+	//WritebmpFile(castFilter->GetOutput(),thresholded_name);
+	WritemhaFile(thresholded,thresholded_name);
+
 
 	system("pause");
 	return EXIT_SUCCESS;
@@ -345,7 +384,14 @@ void WritevtiFile(vtkImageData* ImageToWrite,char* filename)
 	  writer2->Write();
 	std::cout<<"write "<<filename<<" successfully"<<std::endl;
 }
-
+void WritebmpFile(vtkImageData* ImageToWrite,char* filename)
+{
+	vtkBMPWriter * writer = vtkBMPWriter::New();
+	writer->SetFileName(filename);
+	writer->SetInput(ImageToWrite);
+	writer->Write();
+	std::cout<<"write "<<filename<<" successfully"<<std::endl;
+}
 
 
 vtkFloatArray* SetdesignMat()
@@ -391,138 +437,12 @@ vtkFloatArray* SetdesignMat()
 	return init;
 }
 
-vtkImageData* SetGLMEstimator(vtkFloatArray* designMat,char* prefix)
-{
-	
-	//class:vtkGLMDector
-	//superclass: vtkActivationDector
-	///superclass:vtkObject
-	vtkGLMDetector *GLMDetector=vtkGLMDetector::New();
-	GLMDetector->SetDesignMatrix(designMat);
-	// Description:
-    // Gets/Sets the activation detection method (GLM = 1; MI = 2).
-	GLMDetector->SetDetectionMethod(ACTIVATION_DETECTION_METHOD_GLM);
-
-	vtkFloatArray * arr_test=GLMDetector->GetDesignMatrix();
-	std::cout<<"number of components"<<std::endl;
-	std::cout<<arr_test->GetNumberOfComponents()<<std::endl;
-	std::cout<<"number of tuples"<<std::endl;
-	std::cout<<arr_test->GetNumberOfTuples()<<std::endl;
-
-
-	//class:vtkGLMEstimator
-	///superclass:vtkActivationEstimator
-	////superclass:vtkMultipleInputImageFilter
-	//Description: the estimation must occur becore any activation volumes can be generated
-	//vtkGLMEstimator *GLMEstimator=vtkGLMEstimator::New();
-	vtkGLMEstimator* GLMEstimator=vtkGLMEstimator::New();
-	//set detector first
-	GLMEstimator->SetDetector(GLMDetector);
-
-	char **filename;
-	//generate filename series
-	filename=FilenameGenerator(1,30,prefix );
-
-	//add input to GLMEstimator
-	int i;
-	for(i=0;i<30;i++)
-	{
-		GLMEstimator->AddInput(ReadmhaFile(filename[i]));
-	}
-
-	//Description:
-	//Whether prewhiten or not(1/0)
-	GLMEstimator->SetPreWhitening(0);
-    // Description:
-    // Sets the lower threshold.
-	GLMEstimator->SetLowerThreshold(0);
-    // Description:
-    // Sets the cutoff frequency.
-    GLMEstimator->SetCutoff(0.01);
-    // Description:
-    // Enables or disables high-pass filtering. 
-    GLMEstimator->EnableHighPassFiltering(0);
-    // Description:
-    // Sets/Gets global effect.
-	GLMEstimator->SetGlobalEffect(1);
-	GLMEstimator->Update();
-
-	std::cout<<"voxel number of components"<<std::endl;
-	std::cout<<GLMEstimator->GetOutput()->GetPointData()->GetScalars()->GetNumberOfComponents()<<std::endl;
-	std::cout<<"voxel number of tuples"<<std::endl;
-	std::cout<<GLMEstimator->GetOutput()->GetPointData()->GetScalars()->GetNumberOfTuples()<<std::endl;
-
-	std::cout<<"GLMEstimator done!"<<std::endl;
-
-	return GLMEstimator->GetOutput();
-}
-
-vtkImageData* SetGLMVolumeGenerator(vtkFloatArray* designMat,vtkImageData *image)
-{
-		//class:	  vtkGLMVolumeGenerator
-	//superclass: vtkActivationVolumeGenerator
-	///superclass:vtkSimpleImageToimageFilter
-	
-	vtkIntArray *vec=vtkIntArray::New();
-	
-	//set number of components in a tuple
-	vec->SetNumberOfComponents(1);
-	//set number of tuples
-	vec->SetNumberOfTuples(4);
-	//set j th. component in i th. tuple
-	//[1 -1 0 0]
-	vec->SetComponent(0,0,1);
-	vec->SetComponent(1,0,-1);
-	vec->SetComponent(2,0,0);
-	vec->SetComponent(3,0,0);
-
-	vtkGLMVolumeGenerator *GLMVolmeGenerator=vtkGLMVolumeGenerator::New();
-	//Descirption:
-	//Determine whether to prewhiten 0/1
-	GLMVolmeGenerator->SetPreWhitening(0);
-    // Description:
-    // Sets the contrast vector. 
-    GLMVolmeGenerator->SetContrastVector(vec);
-    // Description:
-    // Sets the design matrix 
-    GLMVolmeGenerator->SetDesignMatrix(designMat);
-	GLMVolmeGenerator->SetInput(image);
-	GLMVolmeGenerator->Update();
-
-	return GLMVolmeGenerator->GetOutput();
-}
-
-vtkImageData* ActivationThreshold(vtkImageData * image)
-{
-	//threshold is input as t
-	//input: p,dof;
-	//output:t
-	double t,p;
-	long dof;
-	
-	std::cout<<"input p"<<std::endl;//p=0.001;
-	//std::cin>>p;
-	p=0.001;
-	std::cout<<"input dof"<<std::endl;//dof=29;
-	//std::cin>>dof;
-	dof=29;
-	vtkCDF * CDF=vtkCDF::New();  
-	t=CDF->p2t(p,dof);
-	std::cout<<"value of t: "<<t<<std::endl;
-
-	vtkIsingActivationThreshold *IsingActivationThreshold=vtkIsingActivationThreshold::New();
-	IsingActivationThreshold->AddInput(image);
-	IsingActivationThreshold->Setthreshold(t);
-	IsingActivationThreshold->SetthresholdID(1);
-	IsingActivationThreshold->Update();
-
-	return IsingActivationThreshold->GetOutput();
-}
 
 char** FilenameGenerator(int first,int last,char* prefix )
 {
 	char** returnName;
-	char* suffix="%02d.dcm";
+	//char* suffix="%05d.dcm";
+	char* suffix="%02d.mha";
 	char* name2=new char[strlen(suffix)+strlen(prefix)];
 	strcpy(name2,prefix);
 	strcat(name2,suffix);
@@ -593,3 +513,36 @@ void write_txt(vtkImageData* input,char* filename)
 	std::cout<<"writing done: "<<filename<<std::endl;
 }
 
+
+vtkImageData* Pre_Threshold(vtkImageData* image_in,float lower,float upper)
+{
+	double out_value = 0;
+	
+	vtkImageThreshold* threshold_hd = vtkImageThreshold::New();
+	
+	//set input
+	threshold_hd->SetInput(image_in);
+
+	//set threshold range
+	threshold_hd->ThresholdBetween(lower,upper);
+	//replace the pixel out of range with out value
+	threshold_hd->ReplaceOutOn();
+	threshold_hd->SetOutValue(out_value);
+	threshold_hd->Update();
+	//get out thresholded image pointer
+	return threshold_hd->GetOutput();
+}
+
+vtkImageData* Smooth(vtkImageData* image_in)
+{
+	double deviations[3];
+	double radiusfactors[3];
+	vtkImageGaussianSmooth* gaussianSmooth = 
+		vtkImageGaussianSmooth::New();
+	gaussianSmooth->SetInput(image_in);
+	//set gassian parameters
+	//gaussianSmooth->SetStandardDeviations(deviations);
+	//gaussianSmooth->SetRadiusFactors(radiusfactors)
+	gaussianSmooth->Update();
+	return gaussianSmooth->GetOutput();
+}
